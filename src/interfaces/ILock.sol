@@ -7,6 +7,7 @@ interface ILock {
         address owner,
         address token,
         uint256 amount,
+        uint256 startTime,
         uint256 unlockTime,
         uint256 cliffPeriod,
         address recepeint,

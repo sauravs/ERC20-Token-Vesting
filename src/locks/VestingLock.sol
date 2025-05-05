@@ -23,10 +23,16 @@ contract VestingLock is BaseLock {
     );
 
     /// @notice Returns the vesting interval
-    /// @dev Calculates the time between each slot, ignoring cliff period
+    /// @dev Calculates the time between each slot
     function vestingInterval() public view returns (uint256) {
-        uint256 vestingDuration = this.getUnlockTime();
-        return vestingDuration / this.getSlots();
+        bool enableCliff = this.getEnableCliff();
+        if (enableCliff) {
+            uint256 vestingDuration = this.getUnlockTime() - this.getCliffPeriod();
+            return vestingDuration / this.getSlots();
+        } else {
+            uint256 vestingDuration = this.getUnlockTime() - this.getStartTime();
+            return vestingDuration / this.getSlots();
+        }
     }
 
     /// @notice Returns the amount of tokens to be vested per slot
@@ -44,7 +50,7 @@ contract VestingLock is BaseLock {
         bool enableCliff = this.getEnableCliff();
 
         // check if we're still in cliff period
-        if (enableCliff && currentTime < startTime + cliffPeriod) {
+        if (enableCliff && currentTime < cliffPeriod) {
             return 0;
         }
 
@@ -53,14 +59,16 @@ contract VestingLock is BaseLock {
 
         if (enableCliff) {
             // if cliff is enabled, vesting starts after cliff period
-            timePassedForVesting = currentTime > (startTime + cliffPeriod) ? currentTime - (startTime + cliffPeriod) : 0;
+            timePassedForVesting = currentTime > cliffPeriod ? currentTime - cliffPeriod : 0;
         } else {
             // otherwise vesting starts immediately
             timePassedForVesting = currentTime - startTime;
         }
 
-        // calculate how many slots have vested based on time passed
-        uint256 totalVestedSlots = timePassedForVesting / vestingInterval();
+        // Calculate how many slots have vested based on time passed
+        uint256 vInterval = vestingInterval();
+        // making sure we don't divide by zero
+        uint256 totalVestedSlots = vInterval > 0 ? timePassedForVesting / vInterval : 0;
 
         // cap at max slots
         if (totalVestedSlots > this.getSlots()) {
@@ -73,36 +81,41 @@ contract VestingLock is BaseLock {
             newClaimableSlots = totalVestedSlots - this.getCurrentSlot();
         }
 
-        // calculate tokens to be released
+        if (totalVestedSlots < this.getCurrentSlot()) {
+            newClaimableSlots = totalVestedSlots;
+        }
+
         return newClaimableSlots * vestingAmount();
     }
 
-    /// @notice Get the next vesting date when tokens will be claimable
-    /// @return Timestamp of next vesting event (0 if fully vested)
+    /// @notice Get the next vesting date
+    /// @return Timestamp of the next vesting date
+    /// @dev If all tokens are already vested, return 0
+
     function getNextVestingDate() public view returns (uint256) {
         uint256 currentTime = block.timestamp;
         uint256 startTime = this.getStartTime();
         uint256 cliffPeriod = this.getCliffPeriod();
         bool enableCliff = this.getEnableCliff();
 
-        // if all tokens are claimed
+        // if all tokens are vested, return 0
         if (this.getCurrentSlot() >= this.getSlots()) {
-            return 0; // fully vested
+            return 0;
         }
 
-        // if we are before cliff period
-        if (enableCliff && currentTime < startTime + cliffPeriod) {
-            return startTime + cliffPeriod; // next vesting is when cliff ends
+        // id were before cliff, next vesting is at cliff + 1 interval
+        if (enableCliff && currentTime < cliffPeriod) {
+            return cliffPeriod + vestingInterval();
         }
 
-        // actual vesting start (after cliff if enabled)
-        uint256 vestingStart = enableCliff ? startTime + cliffPeriod : startTime;
+        // calculate when the next slot will vest
+        uint256 vStartTime = enableCliff ? cliffPeriod : startTime;
 
-        // calculate next slot unlock time
+        // calculate the next slot number (current + 1)
         uint256 nextSlot = this.getCurrentSlot() + 1;
-        uint256 nextVestingTime = vestingStart + (nextSlot * vestingInterval());
 
-        return nextVestingTime;
+        // calculate when the next slot will vest
+        return vStartTime + (nextSlot * vestingInterval());
     }
 
     /// @notice Get detailed vesting schedule information
@@ -112,6 +125,7 @@ contract VestingLock is BaseLock {
     /// @return remainingAmount Amount still locked for future vesting
     /// @return nextVestingDate Timestamp when next amount will vest
     /// @return vestingProgress Percentage of total vesting completed (0-100)
+
     function getVestingStatus()
         external
         view
@@ -134,16 +148,19 @@ contract VestingLock is BaseLock {
         claimableAmount = getClaimableAmount();
         nextVestingDate = getNextVestingDate();
 
+        // Calculate slots vested
+        uint256 slotsVested = 0;
+
         // if we are still in cliff, nothing has vested
-        if (enableCliff && currentTime < startTime + cliffPeriod) {
+        if (enableCliff && currentTime < cliffPeriod) {
             vestedAmount = 0;
         } else {
             // calculate time passed for vesting
-            uint256 vestingStart = enableCliff ? startTime + cliffPeriod : startTime;
+            uint256 vestingStart = enableCliff ? cliffPeriod : startTime;
             uint256 timePassedForVesting = currentTime > vestingStart ? currentTime - vestingStart : 0;
 
             // calculate slots vested
-            uint256 slotsVested = timePassedForVesting / vestingInterval();
+            slotsVested = timePassedForVesting / vestingInterval();
             if (slotsVested > this.getSlots()) {
                 slotsVested = this.getSlots();
             }
@@ -153,9 +170,9 @@ contract VestingLock is BaseLock {
 
         remainingAmount = totalAmount - vestedAmount;
 
-        // calculate progress percentage (0-100)
-        if (totalAmount > 0) {
-            vestingProgress = (vestedAmount * 100) / totalAmount;
+        // calculate progress based on slots rather than amounts
+        if (this.getSlots() > 0) {
+            vestingProgress = (slotsVested * 100) / this.getSlots();
         } else {
             vestingProgress = 0;
         }
@@ -175,7 +192,7 @@ contract VestingLock is BaseLock {
         bool enableCliff = this.getEnableCliff();
 
         // check if we're still in cliff period
-        if (enableCliff && currentTime < startTime + cliffPeriod) {
+        if (enableCliff && currentTime < cliffPeriod) {
             revert NotClaimableYet();
         }
 
@@ -184,14 +201,15 @@ contract VestingLock is BaseLock {
 
         if (enableCliff) {
             // if cliff is enabled, vesting starts after cliff period
-            timePassedForVesting = currentTime > (startTime + cliffPeriod) ? currentTime - (startTime + cliffPeriod) : 0;
+            timePassedForVesting = currentTime > cliffPeriod ? currentTime - cliffPeriod : 0;
         } else {
             // otherwise vesting starts immediately
             timePassedForVesting = currentTime - startTime;
         }
 
-        // calculate how many slots have vested based on time passed
-        uint256 totalVestedSlots = timePassedForVesting / vestingInterval();  //@audit if comes in decimal?Rounding?
+        // calculate how many slots have vested based on time passed (provided additonal check to avoid division by zero)
+        uint256 vInterval = vestingInterval();
+        uint256 totalVestedSlots = vInterval > 0 ? timePassedForVesting / vInterval : 0;
 
         // cap at max slots
         if (totalVestedSlots > this.getSlots()) {
@@ -202,6 +220,10 @@ contract VestingLock is BaseLock {
         uint256 newClaimableSlots = 0;
         if (totalVestedSlots > this.getCurrentSlot()) {
             newClaimableSlots = totalVestedSlots - this.getCurrentSlot();
+        }
+
+        if (totalVestedSlots < this.getCurrentSlot()) {
+            newClaimableSlots = totalVestedSlots;
         }
 
         // if nothing to claim

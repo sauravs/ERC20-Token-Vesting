@@ -11,6 +11,7 @@ import "./Errors.sol";
 
 /**
  * @title TokenLockFactory
+ * @author web3tech.biz
  * @notice Factory contract for creating token vesting locks
  * @dev Uses minimal proxy pattern for gas-efficient deployments
  */
@@ -151,6 +152,7 @@ contract TokenVestingFactory is ReentrancyGuard {
      * @notice Create a new vesting lock for tokens
      * @param token Address of token to be vested
      * @param amount Total Number of tokens to be vested
+     * @param startTime  From when the vesting contract starts executing (in seconds)
      * @param unlockTime Duration until full released (in seconds)
      * @param cliffPeriod Duration of cliff period (in seconds)
      * @param recipient Address that will receive vested tokens
@@ -161,6 +163,7 @@ contract TokenVestingFactory is ReentrancyGuard {
     function createVestingLock(
         address token,
         uint256 amount,
+        uint256 startTime,
         uint256 unlockTime,
         uint256 cliffPeriod,
         address recipient,
@@ -175,6 +178,7 @@ contract TokenVestingFactory is ReentrancyGuard {
             msg.sender, // owner
             token,
             amount,
+            startTime,
             unlockTime,
             cliffPeriod,
             recipient,

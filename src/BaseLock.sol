@@ -21,6 +21,10 @@ abstract contract BaseLock is ILock {
     /// @notice Amount of tokens locked
     uint256 private amount;
 
+    /// @notice Timestamp when the vesting contract get activated
+
+    uint256 private startTime;
+
     /// @notice Timestamp when total amount of tokens unlock
     uint256 private unlockTime;
 
@@ -38,9 +42,6 @@ abstract contract BaseLock is ILock {
 
     /// @notice Timestamp of last claim
     uint256 private lastClaimedTime;
-
-    /// @notice Start time of the lock contract
-    uint256 private startTime;
 
     /// @notice Enable cliff period
     bool private enableCliff;
@@ -76,6 +77,7 @@ abstract contract BaseLock is ILock {
         address _owner,
         address _token,
         uint256 _amount,
+        uint256 _startTime,
         uint256 _unlockTime,
         uint256 _cliffPeriod,
         address _recepeint,
@@ -94,6 +96,7 @@ abstract contract BaseLock is ILock {
         owner = _owner;
         token = _token;
         amount = _amount;
+        startTime = _startTime;
         unlockTime = _unlockTime;
         cliffPeriod = _cliffPeriod;
         recipient = _recepeint;
@@ -102,7 +105,6 @@ abstract contract BaseLock is ILock {
         releasedAmount = _releasedAmount;
         lastClaimedTime = _lastClaimedTime;
         enableCliff = _enableCliff;
-        startTime = block.timestamp;
         initialized = true;
 
         emit LockInitialized(
