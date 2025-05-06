@@ -77,3 +77,8 @@ The implementation contract that extends BaseLock with linear vesting capabiliti
 - Any scenario requiring controlled release of tokens over time
 
 This system provides a robust, gas-efficient solution for token vesting needs with strong security guarantees and flexible configuration options.
+
+
+
+
+

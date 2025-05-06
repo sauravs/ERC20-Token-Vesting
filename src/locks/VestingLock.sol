@@ -77,11 +77,15 @@ contract VestingLock is BaseLock {
 
         // calculate how many new slots can be claimed now
         uint256 newClaimableSlots = 0;
-        if (totalVestedSlots > this.getCurrentSlot()) {
+        if (totalVestedSlots < this.getCurrentSlot()) {
             newClaimableSlots = totalVestedSlots - this.getCurrentSlot();
         }
 
-        if (totalVestedSlots < this.getCurrentSlot()) {
+        if (totalVestedSlots > this.getCurrentSlot()) {
+            newClaimableSlots = totalVestedSlots;
+        }
+
+        if (totalVestedSlots == this.getCurrentSlot()) {
             newClaimableSlots = totalVestedSlots;
         }
 
@@ -223,6 +227,11 @@ contract VestingLock is BaseLock {
         }
 
         if (totalVestedSlots < this.getCurrentSlot()) {
+            newClaimableSlots = totalVestedSlots;
+        }
+
+
+         if (totalVestedSlots == this.getCurrentSlot()) {
             newClaimableSlots = totalVestedSlots;
         }
 

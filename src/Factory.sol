@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
+import "./BaseLock.sol";
 import "./locks/VestingLock.sol";
 import "./interfaces/ILock.sol";
 import "./Errors.sol";
@@ -170,6 +171,10 @@ contract TokenVestingFactory is ReentrancyGuard {
         uint256 slots,
         bool enableCliff
     ) external returns (address lock) {
+        // TimerConfig struct to group the time related parameters
+        Structs.TimerConfig memory timers =
+            Structs.TimerConfig({startTime: startTime, unlockTime: unlockTime, cliffPeriod: cliffPeriod});
+
         // Clone the implementation
         lock = vestingImpl.clone();
 
@@ -178,9 +183,7 @@ contract TokenVestingFactory is ReentrancyGuard {
             msg.sender, // owner
             token,
             amount,
-            startTime,
-            unlockTime,
-            cliffPeriod,
+            timers,
             recipient,
             slots,
             0, // current slot

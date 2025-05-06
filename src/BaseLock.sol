@@ -3,12 +3,18 @@ pragma solidity 0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/ILock.sol";
+import "./Structs.sol";
 import "./Errors.sol";
 
 /// @title Base Lock Contract
 /// @notice Abstract contract implementing core locking functionality
 /// @dev Base contract for token vesting functionality
 abstract contract BaseLock is ILock {
+    
+
+    /// @notice Timer settings for the vesting schedule
+    Structs.TimerConfig private timers;
+
     /// @notice Owner of the lock contract
     address private owner;
 
@@ -20,16 +26,6 @@ abstract contract BaseLock is ILock {
 
     /// @notice Amount of tokens locked
     uint256 private amount;
-
-    /// @notice Timestamp when the vesting contract get activated
-
-    uint256 private startTime;
-
-    /// @notice Timestamp when total amount of tokens unlock
-    uint256 private unlockTime;
-
-    /// @notice Duration till cliff period ends
-    uint256 private cliffPeriod;
 
     /// @notice Total number of vesting slots
     uint256 private slots;
@@ -77,9 +73,7 @@ abstract contract BaseLock is ILock {
         address _owner,
         address _token,
         uint256 _amount,
-        uint256 _startTime,
-        uint256 _unlockTime,
-        uint256 _cliffPeriod,
+         Structs.TimerConfig memory _timers,
         address _recepeint,
         uint256 _slots,
         uint256 _currentSlot,
@@ -96,9 +90,7 @@ abstract contract BaseLock is ILock {
         owner = _owner;
         token = _token;
         amount = _amount;
-        startTime = _startTime;
-        unlockTime = _unlockTime;
-        cliffPeriod = _cliffPeriod;
+        timers = _timers;
         recipient = _recepeint;
         slots = _slots;
         currentSlot = _currentSlot;
@@ -108,7 +100,15 @@ abstract contract BaseLock is ILock {
         initialized = true;
 
         emit LockInitialized(
-            _owner, _token, _amount, _unlockTime, _cliffPeriod, _recepeint, _slots, _enableCliff, startTime
+            _owner,
+            _token,
+            _amount,
+            _timers.unlockTime,
+            _timers.cliffPeriod,
+            _recepeint,
+            _slots,
+            _enableCliff,
+            _timers.startTime
         );
     }
 
@@ -129,12 +129,12 @@ abstract contract BaseLock is ILock {
 
     /// @notice Returns the unlock time
     function getUnlockTime() external view returns (uint256) {
-        return unlockTime;
+        return timers.unlockTime;
     }
 
     /// @notice Returns the cliff period
     function getCliffPeriod() external view returns (uint256) {
-        return cliffPeriod;
+        return timers.cliffPeriod;
     }
 
     /// @notice Returns the recipient address
@@ -164,7 +164,7 @@ abstract contract BaseLock is ILock {
 
     /// @notice Returns the start time
     function getStartTime() external view returns (uint256) {
-        return startTime;
+        return timers.startTime;
     }
 
     /// @notice Returns the cliff status
