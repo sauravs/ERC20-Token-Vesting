@@ -28,7 +28,7 @@ contract TokenVestingTest is Test {
 
     // Addresses
     address constant USDC_POLYGON = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
-    address constant USDC_WHALE = 0x251E430aaB24aAC2541f7880E15eE51B0085e115;
+    address constant USDC_WHALE = 0x3A3BD7bb9528E159577F7C2e685CC81A765002E2;
 
     // Test accounts
     address public owner;

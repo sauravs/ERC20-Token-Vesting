@@ -53,6 +53,7 @@ contract VestingLock is BaseLock {
         if (enableCliff && currentTime < cliffPeriod) {
             return 0;
         }
+        
 
         // calculate time passed since vesting started (after cliff if enabled)
         uint256 timePassedForVesting;
@@ -77,16 +78,16 @@ contract VestingLock is BaseLock {
 
         // calculate how many new slots can be claimed now
         uint256 newClaimableSlots = 0;
-        if (totalVestedSlots < this.getCurrentSlot()) {
+        if (totalVestedSlots > this.getCurrentSlot()) {
             newClaimableSlots = totalVestedSlots - this.getCurrentSlot();
         }
 
-        if (totalVestedSlots > this.getCurrentSlot()) {
+        if (totalVestedSlots < this.getCurrentSlot()) {
             newClaimableSlots = totalVestedSlots;
         }
 
         if (totalVestedSlots == this.getCurrentSlot()) {
-            newClaimableSlots = totalVestedSlots;
+            newClaimableSlots = 0;
         }
 
         return newClaimableSlots * vestingAmount();
@@ -230,9 +231,8 @@ contract VestingLock is BaseLock {
             newClaimableSlots = totalVestedSlots;
         }
 
-
-         if (totalVestedSlots == this.getCurrentSlot()) {
-            newClaimableSlots = totalVestedSlots;
+        if (totalVestedSlots == this.getCurrentSlot()) {
+            newClaimableSlots = 0;
         }
 
         // if nothing to claim
